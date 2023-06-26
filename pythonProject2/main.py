@@ -8,6 +8,18 @@ from docx import Document
 from flask import Flask, request, render_template, send_file
 import fitz
 
+def search_lines(content,keywords):
+    word_position = content.find(keywords)
+    tail = content.find('\n',word_position)
+    head = content.rfind('\n',0,word_position)
+    start = -1
+    line = 1
+    while(start!=head):
+     start = content.find('\n',start+1)
+     line+=1
+    print(str(line)+" ",end="")
+    print(content[head+1:tail])
+
 
 # 设置检索文件目录和数据库文件路径
 DOCS_DIR = "/path/to/docs"
@@ -44,10 +56,20 @@ for root, dirs, files in os.walk(DOCS_DIR):
 writer.commit()
 
 # 创建一个检索器
-searcher = ix.searcher()
-searcher_str = "APPLE"
-results = searcher.find("content",searcher_str)
-print(results)
-searcher.close()
+with ix.searcher() as searcher:
+    # 创建query对象，被用来搜索的
+    # QueryParser(检索的字段名, 索引结构).parse(关键词)
+    query = QueryParser('content', ix.schema).parse('generation')
+    # 使用搜索对象的搜索方法来完成检索
+    # search(query, limit=None)
+    # limit限制搜索结果的条数，默认为10个，指定为None则显示所有
+    results = searcher.search(query, limit=None)
+    for res in results:
+        print("```")
+        print(res['path'])
+        print("-------------------------------")
+        search_lines(res['content'],'generation')
+        print()
+
 
 
