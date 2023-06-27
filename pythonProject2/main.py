@@ -1,26 +1,52 @@
 import os
+from pprint import pprint
+import eel
 import whoosh.index as index
 from whoosh.fields import *
 from whoosh.qparser import QueryParser
 from whoosh.query import *
 import docx
 from docx import Document
-from flask import Flask, request, render_template, send_file
+import tkinter as tk
+from tkinter import filedialog
+from flask import Flask, request, render_template, send_file,jsonify
 import fitz
 
 def search_lines(content,keywords):
-    word_position = content.find(keywords)
-    tail = content.find('\n',word_position)
-    head = content.rfind('\n',0,word_position)
-    start = -1
-    line = 1
-    while(start!=head):
-     start = content.find('\n',start+1)
-     line+=1
-    print(str(line)+" ",end="")
-    print(content[head+1:tail])
+    search_position=0
+    word_position = content.find(keywords, search_position)
+    while(word_position!=-1):
+     tail = content.find('\n',word_position)
+     head = content.rfind('\n',0,word_position)
+     start = -1
+     line = 1
+     while(start!=head):
+      start = content.find('\n',start+1)
+      line+=1
+     print(str(line)+" ",end="")
+     print(content[head+1:tail])
+     search_position=tail
+     word_position = content.find(keywords, search_position)
+
+def get_keywords_lines(content,keywords):
+    outcome=[]
+    search_position=0
+    word_position = content.find(keywords, search_position)
+    while(word_position!=-1):
+     tail = content.find('\n',word_position)
+     head = content.rfind('\n',0,word_position)
+     start = -1
+     line = 1
+     while(start!=head):
+      start = content.find('\n',start+1)
+      line+=1
+     outcome.append(str(line)+" "+content[head+1:tail+1])
+     search_position=tail
+     word_position = content.find(keywords, search_position)
+    return outcome
 
 
+global DOCS_DIR,INDEX_DIR
 # 设置检索文件目录和数据库文件路径
 DOCS_DIR = "/path/to/docs"
 INDEX_DIR = "/path/to/index"
@@ -55,21 +81,43 @@ for root, dirs, files in os.walk(DOCS_DIR):
 # 提交并关闭索引写入器
 writer.commit()
 
-# 创建一个检索器
-with ix.searcher() as searcher:
-    # 创建query对象，被用来搜索的
-    # QueryParser(检索的字段名, 索引结构).parse(关键词)
-    query = QueryParser('content', ix.schema).parse('generation')
-    # 使用搜索对象的搜索方法来完成检索
-    # search(query, limit=None)
-    # limit限制搜索结果的条数，默认为10个，指定为None则显示所有
-    results = searcher.search(query, limit=None)
-    for res in results:
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/upload', methods=['POST','GET'])
+def select_folderName():
+ FolderName = filedialog.askdirectory()  #获取文件夹
+ print(FolderName)
+ DOCS_DIR = FolderName
+ return render_template("index.html")
+
+@app.route("/test",methods=['POST','GET'])
+def test():
+ return render_template("index.html")
+
+@app.route('/submit_result',methods=['GET','POST'])
+def submit():
+    if request.method=='POST':
+        keywords=request.form['keywords']
+    elif request.method=='GET':
+        keywords=request.args.get('keywords')
+    outcome=[]
+    with ix.searcher() as searcher:
+       query = QueryParser('content', ix.schema).parse(keywords)
+       ##search(query, limit=None)
+       results = searcher.search(query, limit=None)
+       for res in results:
         print("```")
         print(res['path'])
         print("-------------------------------")
-        search_lines(res['content'],'generation')
+        search_lines(res['content'],keywords)
         print()
+        outcome+=get_keywords_lines(res['content'],keywords)
+       return render_template("index.html",outcome=outcome)
 
-
-
+if __name__ == "__main__":
+ app.run(host='127.0.0.1', port=8080,debug=True)
