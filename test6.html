@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>APP文件检索系统</title>
+</head>
+<body>
+  <h2>APP文件检索系统</h2>
+
+  <label for="folder">选择查询目录：</label>
+  <input type="file" id="folder" webkitdirectory directory multiple>
+  
+  <br><br>
+  
+  <label for="keyword">输入查询关键字：</label>
+  <input type="text" id="keyword">
+  <button onclick="searchFiles()">搜索</button>
+  
+  <br><br>
+  
+  <ul id="results"></ul>
+  
+  <br><br>
+  
+  <button onclick="saveSelectedResults()">保存选中结果到文本并下载</button>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
+    }
+    input[type="text"], input[type="file"], select {
+      margin: 10px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    input[type="submit"], button {
+      margin: 10px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    input[type="submit"]:hover, button:hover {
+      background-color: #0069d9;
+    }
+  </style>
+
+  <script>
+    let indexedFiles = [];
+    let selectedResults = [];
+
+    // 建立索引
+    function indexFiles(files) {
+      indexedFiles = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.name.endsWith('.pdf') || file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+          indexedFiles.push(file);
+        }
+      }
+      
+      console.log('已建立索引的文件：', indexedFiles);
+    }
+
+    // 搜索文件
+    function searchFiles() {
+      const keyword = document.getElementById('keyword').value;
+      const resultsContainer = document.getElementById('results');
+      resultsContainer.innerHTML = '';
+      
+      if (keyword.trim().length === 0) {
+        return;
+      }
+      
+      const matchedFiles = indexedFiles.filter(file => file.name.endsWith('.pdf') || file.name.endsWith('.doc') || file.name.endsWith('.docx'));
+      
+      for (let i = 0; i < matchedFiles.length; i++) {
+        const li = document.createElement('li');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = matchedFiles[i].name;
+        checkbox.addEventListener('change', function() {
+          if (this.checked) {
+            selectedResults.push(this.value);
+          } else {
+            const index = selectedResults.indexOf(this.value);
+            if (index > -1) {
+              selectedResults.splice(index, 1);
+            }
+          }
+        });
+        
+        li.appendChild(checkbox);
+        li.appendChild(document.createTextNode(matchedFiles[i].name));
+        resultsContainer.appendChild(li);
+      }
+    }
+
+    // 保存选中结果到文本并下载
+    function saveSelectedResults() {
+      if (selectedResults.length === 0) {
+        return;
+      }
+      
+      const filename = 'selected_results.txt';
+      let content = '';
+      
+      for (let i = 0; i < selectedResults.length; i++) {
+        content += selectedResults[i] + '\n';
+      }
+      
+      const element = document.createElement('a');
+      element.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
+      element.download = filename;
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      
+      element.click();
+      
+      document.body.removeChild(element);
+    }
+
+    const folderInput = document.getElementById('folder');
+    folderInput.addEventListener('change', function() {
+      const files = Array.from(folderInput.files);
+      indexFiles(files);
+    });
+  </script>
+</body>
+</html>
