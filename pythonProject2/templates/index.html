@@ -3,6 +3,25 @@
 <head>
     <title>选择文件夹</title>
 </head>
+<style>
+    input[type="submit"], button {
+      margin: 10px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    input[type="text"] {
+      margin: 10px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    </style>
 <body>
     <h1>选择文件夹</h1>
     <a href="/upload"><button onclick="">upload</button></a>
@@ -10,7 +29,7 @@
 <div style='height:30px'><span style='display:inline-block;margin-right:5px'>关键词</span>
 	<input type='text' name='keywords' />
 </div>
-    <button type="submit">提交</button>
+    <button type="submit" class="button">提交</button>
     </form>
 {% for item in outcome %}
     <input type="checkbox"/>{{item}}<br/>
