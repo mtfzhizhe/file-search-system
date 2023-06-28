@@ -3,70 +3,80 @@
 <head>
     <title>选择文件夹</title>
 </head>
-<style>
-	input[type="submit"], button {
-      margin: 10px;
-      padding: 5px 10px;
-      border: none;
-      border-radius: 5px;
-      background-color: #007bff;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    input[type="text"] {
-      margin: 10px;
-      padding: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 16px;
-    }
-</style>
 <body>
     <h1>选择文件夹</h1>
     <a href="/upload"><button onclick="">upload</button></a>
     <form action='/submit_result' method='GET'>
 <div style='height:30px'><span style='display:inline-block;margin-right:5px'>关键词</span>
-	<input type='text' name='keywords' />
+	<input type='text' name='keywords' id="searchInput" />
 </div>
-    <button type="submit">提交</button>
+    <button type="submit" >提交</button>
     </form>
-{% for item in outcome %}
-    {{item.title}}<br/>
-    <input type="checkbox"/>{{item.content}}<br/>
+{% for key in outcome %}
+    {{key}}<br/>
+    {% for item in outcome[key] %}
+    <input type="checkbox" value="{{item}}"/>{{item}}<br/>
+    {% endfor %}
 {% endfor %}
-<br><br>
-<button onclick="saveSelectedResults()">保存选中结果到文本并下载</button>
 </table>
+    <button onclick="find()">标红</button>
+    <button onclick="downloadTxt()">整合并下载</button>
+<script type="text/javascript">
+        function downloadTxt() {
+            var checkboxes = document.querySelectorAll('input[type=checkbox]');
+            var selectedCheckboxValues = [];
+
+            checkboxes.forEach(function(checkbox) {
+                if (checkbox.checked) {
+                    selectedCheckboxValues.push(checkbox.value);
+                }
+            });
+
+            if (selectedCheckboxValues.length > 0) {
+                var txtContent = selectedCheckboxValues.join('');
+                var fileBlob = new Blob([txtContent], {type: 'text/plain'});
+                var fileName = 'selected_items.txt';
+
+                // 创建下载链接
+                var linkElement = document.createElement('a');
+                linkElement.href = URL.createObjectURL(fileBlob);
+                linkElement.download = fileName;
+
+                // 模拟点击下载链接
+                linkElement.click();
+
+                // 清理下载链接
+                URL.revokeObjectURL(linkElement.href);
+            }
+        }
+    </script>
 </body>
 </html>
-<script>
-function saveSelectedResults() {
-    if (selectedResults.length === 0) {
-      return;
-    }
-    
-    const filename = 'selected_results.txt';
-    let content = '';
-    
-    for (let i = 0; i < selectedResults.length; i++) {
-      content += selectedResults[i] + '\n';
-    }
-    
-    const element = document.createElement('a');
-    element.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
-    element.download = filename;
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    
-    element.click();
-    
-    document.body.removeChild(element);
-  }
-
-  const folderInput = document.getElementById('folder');
-  folderInput.addEventListener('change', function() {
-    const files = Array.from(folderInput.files);
-    indexFiles(files);
-  });
-</script>
+</html>
+    <script>
+        function find() {
+            var searchVal = document.getElementById("searchInput").value;
+            var bgColor = "Red"
+            var oDiv = document.getElementsByTagName("body")[0];
+            var sText = oDiv.innerHTML;
+            var reg1 = /<script[^>]*>(.|\n)*<\/script>/gi; //去掉script标签
+            sText = sText.replace(reg1, "");
+            bgColor = bgColor || "red";
+            var num = -1;
+            var rStr = new RegExp(searchVal, "gi"); //匹配传入的搜索值不区分大小写 i表示不区分大小写，g表示全局搜索
+            var rHtml = new RegExp("\<.*?\>", "ig");//匹配html元素
+            var aHtml = sText.match(rHtml); //存放html元素的数组
+            var arr = sText.match(rStr);
+            a = -1;
+            sText = sText.replace(rHtml, '{~}');  //替换html标签
+            sText = sText.replace(rStr, function () {
+                  a++;
+                  return "<span name='addSpan' style='color:red;font-weight:bold " + bgColor + ";'>" + arr[a] + "</span>"
+            }); //替换key
+            sText = sText.replace(/{~}/g, function () {  //恢复html标签
+                  num++;
+                  return aHtml[num];
+            });
+            oDiv.innerHTML = sText;
+        }
+    </script>
