@@ -9,10 +9,11 @@ import docx
 from docx import Document
 import tkinter as tk
 from tkinter import filedialog
-from flask import Flask, request, render_template, send_file,jsonify
+from flask import Flask, request, render_template, send_from_directory,jsonify
 import fitz
 from jieba.analyse import ChineseAnalyzer
 import json
+
 
 def search_lines(content,keywords):
     search_position=0
@@ -46,8 +47,30 @@ def get_keywords_lines(content,keywords):
      search_position=tail
      word_position = content.find(keywords, search_position)
     return outcome
-
-
+def create_index(folder_path):
+    DOCS_DIR = folder_path
+    INDEX_DIR = "/path/to/index"
+    schema = Schema(path=ID(stored=True), content=TEXT(stored=True, analyzer=ChineseAnalyzer()))
+    if not os.path.exists(INDEX_DIR):
+        os.makedirs(INDEX_DIR)
+    ix = index.create_in(INDEX_DIR, schema)
+    writer = ix.writer()
+    for root, dirs, files in os.walk(DOCS_DIR):
+        for file in files:
+            content = ''
+            if file.endswith(".doc") or file.endswith(".docx"):
+                path = os.path.join(root, file)
+                doc = Document(path);
+                for para in doc.paragraphs:
+                    content += para.text + '\n'
+                writer.add_document(path=path, content=content)
+            elif file.endswith(".pdf"):
+                path = os.path.join(root, file)
+                with fitz.open(path) as doc:
+                    for page in doc.pages():
+                        content += page.get_text()
+                writer.add_document(path=path, content=content)
+    writer.commit()
 # 设置检索文件目录和数据库文件路径
 DOCS_DIR = "/path/to/docs"
 INDEX_DIR = "/path/to/index"
@@ -57,7 +80,7 @@ schema = Schema(path=ID(stored=True), content=TEXT(stored=True,analyzer=ChineseA
 
 # 检查索引目录是否存在，如果不存在则创建
 if not os.path.exists(INDEX_DIR):
-    os.makedirs(INDEX_DIR)
+     os.makedirs(INDEX_DIR)
 
 # 建立或打开检索索引
 ix = index.create_in(INDEX_DIR, schema)
@@ -83,19 +106,11 @@ for root, dirs, files in os.walk(DOCS_DIR):
 writer.commit()
 
 app = Flask(__name__)
+BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 @app.route('/')
-def index():
+def index_init():
     return render_template('index.html')
-
-
-@app.route('/upload', methods=['POST','GET'])
-def select_folderName():
- global DOCS_DIR
- FolderName = filedialog.askdirectory()  #获取文件夹
- print(FolderName)
- DOCS_DIR = FolderName
- return render_template("index.html")
 
 @app.route("/test",methods=['POST','GET'])
 def test():
@@ -118,8 +133,24 @@ def submit():
         print("-------------------------------")
         search_lines(res['content'],keywords)
         print()
-        outcome[res.path]=get_keywords_lines()
+        outcome[res['path']]=get_keywords_lines(res['content'],keywords)
        return render_template("index.html",outcome=outcome)
+
+
+@app.route("/download", methods=["POST", "GET"])
+def download_file():
+    filename = request.form.get('filename')
+    dir = os.path.join(BASE_PATH, 'upload')
+    print(dir)
+    return send_from_directory(dir, filename, as_attachment=True)
+
+@app.route('/search', methods=['POST'])
+def search():
+    folder_path = request.json['folder_path']
+    # 在这里处理文件夹路径，例如获取文件列表等
+    file_list = ['file1.txt', 'file2.txt', 'file3.txt']
+    return jsonify(file_list)
+
 
 if __name__ == "__main__":
  app.run(host='127.0.0.1', port=8080,debug=True)
