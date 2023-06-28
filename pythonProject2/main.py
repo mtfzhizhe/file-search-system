@@ -11,6 +11,8 @@ import tkinter as tk
 from tkinter import filedialog
 from flask import Flask, request, render_template, send_file,jsonify
 import fitz
+from jieba.analyse import ChineseAnalyzer
+import json
 
 def search_lines(content,keywords):
     search_position=0
@@ -46,13 +48,12 @@ def get_keywords_lines(content,keywords):
     return outcome
 
 
-global DOCS_DIR,INDEX_DIR
 # 设置检索文件目录和数据库文件路径
 DOCS_DIR = "/path/to/docs"
 INDEX_DIR = "/path/to/index"
 
 # 定义检索索引模式
-schema = Schema(path=ID(stored=True), content=TEXT(stored=True))
+schema = Schema(path=ID(stored=True), content=TEXT(stored=True,analyzer=ChineseAnalyzer()))
 
 # 检查索引目录是否存在，如果不存在则创建
 if not os.path.exists(INDEX_DIR):
@@ -90,6 +91,7 @@ def index():
 
 @app.route('/upload', methods=['POST','GET'])
 def select_folderName():
+ global DOCS_DIR
  FolderName = filedialog.askdirectory()  #获取文件夹
  print(FolderName)
  DOCS_DIR = FolderName
@@ -105,7 +107,7 @@ def submit():
         keywords=request.form['keywords']
     elif request.method=='GET':
         keywords=request.args.get('keywords')
-    outcome=[]
+    outcome={}
     with ix.searcher() as searcher:
        query = QueryParser('content', ix.schema).parse(keywords)
        ##search(query, limit=None)
@@ -116,7 +118,7 @@ def submit():
         print("-------------------------------")
         search_lines(res['content'],keywords)
         print()
-        outcome+=get_keywords_lines(res['content'],keywords)
+        outcome[res.path]=get_keywords_lines()
        return render_template("index.html",outcome=outcome)
 
 if __name__ == "__main__":
