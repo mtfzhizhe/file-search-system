@@ -3,6 +3,25 @@
 <head>
     <title>选择文件夹</title>
 </head>
+<style>
+	input[type="submit"], button {
+      margin: 10px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    input[type="text"] {
+      margin: 10px;
+      padding: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+</style>
 <body>
     <h1>选择文件夹</h1>
     <a href="/upload"><button onclick="">upload</button></a>
@@ -16,6 +35,38 @@
     {{item.title}}<br/>
     <input type="checkbox"/>{{item.content}}<br/>
 {% endfor %}
+<br><br>
+<button onclick="saveSelectedResults()">保存选中结果到文本并下载</button>
 </table>
 </body>
 </html>
+<script>
+function saveSelectedResults() {
+    if (selectedResults.length === 0) {
+      return;
+    }
+    
+    const filename = 'selected_results.txt';
+    let content = '';
+    
+    for (let i = 0; i < selectedResults.length; i++) {
+      content += selectedResults[i] + '\n';
+    }
+    
+    const element = document.createElement('a');
+    element.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(content);
+    element.download = filename;
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    
+    element.click();
+    
+    document.body.removeChild(element);
+  }
+
+  const folderInput = document.getElementById('folder');
+  folderInput.addEventListener('change', function() {
+    const files = Array.from(folderInput.files);
+    indexFiles(files);
+  });
+</script>
