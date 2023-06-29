@@ -9,7 +9,7 @@ import docx
 from docx import Document
 import tkinter as tk
 from tkinter import filedialog
-from flask import Flask, request, render_template, send_from_directory,jsonify
+from flask import Flask, request, render_template, send_from_directory,session, redirect, url_for
 import fitz
 from jieba.analyse import ChineseAnalyzer
 import json
@@ -49,11 +49,6 @@ def get_keywords_lines(content,keywords):
     return outcome
 def create_index(folder_path):
     DOCS_DIR = folder_path
-    INDEX_DIR = "/path/to/index"
-    schema = Schema(path=ID(stored=True), content=TEXT(stored=True, analyzer=ChineseAnalyzer()))
-    if not os.path.exists(INDEX_DIR):
-        os.makedirs(INDEX_DIR)
-    ix = index.create_in(INDEX_DIR, schema)
     writer = ix.writer()
     for root, dirs, files in os.walk(DOCS_DIR):
         for file in files:
@@ -84,29 +79,9 @@ if not os.path.exists(INDEX_DIR):
 
 # 建立或打开检索索引
 ix = index.create_in(INDEX_DIR, schema)
-writer = ix.writer()
-
-# 遍历检索文件目录，将所有pdf和word文件加入索引
-for root, dirs, files in os.walk(DOCS_DIR):
-    for file in files:
-        content=''
-        if file.endswith(".doc") or file.endswith(".docx") :
-            path = os.path.join(root, file)
-            doc = Document(path);
-            for para in doc.paragraphs:
-                content+=para.text+'\n'
-            writer.add_document(path=path, content=content)
-        elif file.endswith(".pdf"):
-            path = os.path.join(root, file)
-            with fitz.open(path) as doc:
-                for page in doc.pages():
-                   content += page.get_text()
-            writer.add_document(path=path, content=content)
-# 提交并关闭索引写入器
-writer.commit()
-
 app = Flask(__name__)
-BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+app.secret_key = '123456'
+
 
 @app.route('/')
 def index_init():
@@ -115,6 +90,19 @@ def index_init():
 @app.route("/test",methods=['POST','GET'])
 def test():
  return render_template("index.html")
+
+@app.route("/upload",methods=['POST','GET'])
+def upload():
+    folder_path = request.form.get('folder_path')
+    create_index(folder_path)
+    session['folder_path']=folder_path
+    return redirect(url_for('result_page'))
+
+
+@app.route('/result_page')
+def result_page():
+    folder_path = session.get('folder_path')
+    return render_template('index.html', folder_path=folder_path)
 
 @app.route('/submit_result',methods=['GET','POST'])
 def submit():
@@ -128,37 +116,9 @@ def submit():
        ##search(query, limit=None)
        results = searcher.search(query, limit=None)
        for res in results:
-        print("```")
-        print(res['path'])
-        print("-------------------------------")
-        search_lines(res['content'],keywords)
-        print()
         outcome[res['path']]=get_keywords_lines(res['content'],keywords)
-       return render_template("index.html",outcome=outcome)
-
-
-@app.route("/download", methods=["POST", "GET"])
-def download_file():
-    filename = request.form.get('filename')
-    dir = os.path.join(BASE_PATH, 'upload')
-    print(dir)
-    return send_from_directory(dir, filename, as_attachment=True)
-
-@app.route('/get_absolute_path', methods=['POST'])
-def get_absolute_path():
-    folder_path = request.form['folderInput']
-    # 在这里可以对路径进行进一步处理，如验证、保存等
-    real_path = os.path.abspath(path)
-    create_index(folder_path)
-    return render_template("index.html")
-
-@app.route('/search', methods=['POST'])
-def search():
-    folder_path = request.json['folder_path']
-    # 在这里处理文件夹路径，例如获取文件列表等
-    file_list = ['file1.txt', 'file2.txt', 'file3.txt']
-    return jsonify(file_list)
-
+       folder_path = session.get('folder_path')
+       return render_template("index.html",outcome=outcome,user_input=keywords,folder_path=folder_path)
 
 if __name__ == "__main__":
  app.run(host='127.0.0.1', port=8080,debug=True)

@@ -1,27 +1,107 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>选择文件夹</title>
+    <title>文件检索系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .highlight {
+            color: red;
+            font-weight: bold;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table th, table td {
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+        .loader {
+            border: 16px solid #f3f3f3; /* Light grey */
+            border-top: 16px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 隐藏加载条 */
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <h1>选择文件夹</h1>
-    <a href="/upload"><button onclick="">upload</button></a>
-    <form action='/submit_result' method='GET'>
-<div style='height:30px'><span style='display:inline-block;margin-right:5px'>关键词</span>
-	<input type='text' name='keywords' id="searchInput" />
-</div>
-    <button type="submit" >提交</button>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <label for="folder_path">请输入文件夹路径：</label>
+        <input type="input" id="folder_path" name="folder_path" value="{{folder_path}}">
+        <input type="submit" value="搜索" onclick="showLoader()">
     </form>
-{% for key in outcome %}
-    {{key}}<br/>
-    {% for item in outcome[key] %}
-    <input type="checkbox" value="{{item}}"/>{{item}}<br/>
-    {% endfor %}
-{% endfor %}
-</table>
-    <button onclick="find()">标红</button>
+    <div id="loader" class="loader hidden"></div>
+    <form action="/submit_result" method="GET">
+        <div style="height: 30px">
+            <span style="display: inline-block; margin-right: 5px">关键词</span>
+            <input type="text" name="keywords" value="{{user_input}}" />
+        </div>
+        <button type="submit" onclick="showLoader()">提交</button>
+    </form>
+    <table>
+        {% for key in outcome %}
+        <tr>
+            <th>{{ key }}</th>
+        </tr>
+        {% for item in outcome[key] %}
+        <tr>
+            <td>
+                {% set highlighted_item = item.replace(user_input, '<span class="highlight">' + user_input + '</span>') %}
+                <input type="checkbox" value="{{ item }}" /><span>{{ highlighted_item | safe }}</span>
+            </td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+    </table>
     <button onclick="downloadTxt()">整合并下载</button>
-<script type="text/javascript">
+    <script type="text/javascript">
         function downloadTxt() {
             var checkboxes = document.querySelectorAll('input[type=checkbox]');
             var selectedCheckboxValues = [];
@@ -49,56 +129,12 @@
                 URL.revokeObjectURL(linkElement.href);
             }
         }
-    </script>
-</body>
-</html>
-</html>
-    <script>
-        function find() {
-            var searchVal = document.getElementById("searchInput").value;
-            var bgColor = "Red"
-            var oDiv = document.getElementsByTagName("body")[0];
-            var sText = oDiv.innerHTML;
-            var reg1 = /<script[^>]*>(.|\n)*<\/script>/gi; //去掉script标签
-            sText = sText.replace(reg1, "");
-            bgColor = bgColor || "red";
-            var num = -1;
-            var rStr = new RegExp(searchVal, "gi"); //匹配传入的搜索值不区分大小写 i表示不区分大小写，g表示全局搜索
-            var rHtml = new RegExp("\<.*?\>", "ig");//匹配html元素
-            var aHtml = sText.match(rHtml); //存放html元素的数组
-            var arr = sText.match(rStr);
-            a = -1;
-            sText = sText.replace(rHtml, '{~}');  //替换html标签
-            sText = sText.replace(rStr, function () {
-                  a++;
-                  return "<span name='addSpan' style='color:red;font-weight:bold " + bgColor + ";'>" + arr[a] + "</span>"
-            }); //替换key
-            sText = sText.replace(/{~}/g, function () {  //恢复html标签
-                  num++;
-                  return aHtml[num];
-            });
-            oDiv.innerHTML = sText;
+        function showLoader() {
+            var loader = document.getElementById("loader");
+
+            loader.classList.remove("hidden");
         }
     </script>
-<style>
-    input[type="text"],select {
-      margin: 9px;
-      padding: 4px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 15px;
-    }
-    input[type="submit"], button {
-      margin: 9px;
-      padding: 4px 9px;
-      border: none;
-      border-radius: 4px;
-      background-color: #007bff;
-      color: #fff;
-      font-size: 15px;
-      cursor: pointer;
-    }
-    input[type="submit"]:hover, button:hover {
-      background-color: #0069d9;
-    }
-  </style>
+
+</body>
+</html>
