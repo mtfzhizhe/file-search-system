@@ -144,6 +144,14 @@ def download_file():
     print(dir)
     return send_from_directory(dir, filename, as_attachment=True)
 
+@app.route('/get_absolute_path', methods=['POST'])
+def get_absolute_path():
+    folder_path = request.form['folderInput']
+    # 在这里可以对路径进行进一步处理，如验证、保存等
+    real_path = os.path.abspath(path)
+    create_index(folder_path)
+    return render_template("index.html")
+
 @app.route('/search', methods=['POST'])
 def search():
     folder_path = request.json['folder_path']
